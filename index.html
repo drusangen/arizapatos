@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1.0"/>
+   <!-- mobile styling -->
+   <meta name="theme-color" content="#448AFF">
+   <meta name="mobile-web-app-capable" content="yes">
+   <meta name="apple-mobile-web-app-capable" content="yes">
+   <meta name="apple-mobile-web-app-status-bar-style" content="#448AFF">
+   <meta name="apple-mobile-web-app-title" content="Shopping List">
+ 
+   <!-- PWA manifest -->
+   <link rel="manifest" href="manifest.json">
+  <title>Venta de Zapatos</title>
+
+  <!-- Material Design icons and fonts  -->
+  <link rel="stylesheet" href="//fonts.googleapis.com/css?family=Roboto:300,400,500,700,400italic">
+  <link rel="stylesheet" href="//fonts.googleapis.com/icon?family=Material+Icons">
+
+  <!-- Material Design styles for Vue.js  -->
+  <link rel="stylesheet" href="https://unpkg.com/vue-material@0.7.4/dist/vue-material.css">
+
+  <!-- our styles -->
+  <link href="shoppinglist.css" type="text/css" rel="stylesheet" media="screen,projection"/>
+</head>
+<body>
+   
+  <!-- vue.js app -->
+  <div id="app" class="app-viewport">
+    <!-- top bar -->
+    <md-whiteframe md-elevation="3" class="main-toolbar">
+      <md-toolbar>
+
+        <!-- back button -->
+        <md-button class="md-icon-button" v-if="mode != 'showlist'" v-on:click="onBack">
+            <md-icon>arrow_back</md-icon>
+        </md-button>
+        
+        <!-- page title -->
+        <h2 class="md-title" style="flex: 1">{{ pagetitle }}</h2>
+
+        <!-- save new shopping list button -->
+        <md-button class="md-icon-button" v-if="mode == 'addlist'" v-on:click="onClickSaveShoppingList" v-bind:disabled="singleList.title.length == 0">
+          <md-icon>check</md-icon>
+        </md-button>
+      </md-toolbar>
+    </md-whiteframe> <!-- top bar -->
+
+    <!-- add new shopping list form-->
+    <md-card v-if="mode == 'addlist'">
+      <md-card-header>Crear Cliente</md-card-header>
+      <md-card-content>
+        <md-input-container>
+          <label>Nuevo cliente</label>
+          <md-input placeholder="nombre" v-model="singleList.title"></md-input>
+        </md-input-container>   
+
+
+      </md-card-content>
+    </md-card> <!-- add new shopping list form -->
+
+    <!-- shopping list item editor -->
+    <div class="itemedit" v-if="mode == 'itemedit'">
+      <md-card>
+        <md-input-container>
+          <h2 class="md-title" style="flex: 1">Bs</h2>
+          <md-input v-model="monto" type="number" placeholder="0.0"></md-input>
+          <md-card-actions>
+            <md-button v-on:click="onAddListItemDeuda" v-bind:disabled="monto == 0">deuda</md-button>
+            <md-button v-on:click="onAddListItemPago" v-bind:disabled="monto == 0">pago</md-button>
+          </md-card-actions>
+        </md-input-container>
+      </md-card>
+
+      <md-table>
+        <md-table-header>
+          <md-table-row>
+            <md-table-head>Deuda</md-table-head>
+            <md-table-head>Pago</md-table-head>
+            <md-table-head>Fecha</md-table-head>
+            <md-table-head>Borrar</md-table-head>
+          </md-table-row>
+        </md-table-header>
+        <md-table-body>
+          <md-table-row  v-for="item in shoppingListItems" :key="item._id" v-if="item.list == currentListId">
+            <md-table-cell md-numeric>{{item.deuda}}</md-table-cell>
+            <md-table-cell md-numeric>{{item.pago}}</md-table-cell>
+            <md-table-cell>{{parseIsoDatetime(item.createdAt)}}</md-table-cell>
+            <md-table-cell>
+               <!-- shopping list item delete button -->
+              <md-button v-on:click="onDeleteItem(item._id)" class="md-icon-button md-list-action">
+                <md-icon>cancel</md-icon>
+              </md-button>
+            </md-table-cell>
+          </md-table-row>
+        </md-table-body>
+      </md-table>
+      </div> <!-- shopping list item editor -->
+
+    <!-- list of shopping lists -->
+    <md-list v-if="mode == 'showlist'">
+      <md-card v-for="list in shoppingLists" :key="list._id" :data-id="list._id">     
+        <md-card-header>
+          <div class="md-title">{{ list.title }}</div>
+        </md-card-header>
+
+        <md-card-content v-if="deudaPendiente[list._id]">
+            deuda: Bs{{ deudaPendiente[list._id].pendiente }} 
+        </md-card-content>
+
+        <md-card-actions>
+          <md-button v-on:click="onClickList(list._id, list.title)">
+              <md-icon>chevron_right</md-icon>
+          </md-button>
+        </md-card-actions>
+      </md-card>
+    </md-list> <!-- list of shopping lists -->
+
+    <!-- floating 'add shopping list' button -->
+    <div class="floatingbutton" v-if="mode == 'showlist'">
+      <md-button class="md-fab md-primary md-raised" v-on:click="onClickAddShoppingList">
+        <md-icon>add</md-icon>
+      </md-button>
+    </div> <!-- floating 'add shopping list' button -->
+  </div>
+  
+  <!-- cuid - unique id generator -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/cuid/1.3.8/browser-cuid.min.js"></script>
+
+  <!-- Vue.js - framework that handles DOM/Model interaction -->
+  <script src="https://unpkg.com/vue@2.4.2/dist/vue.js"></script>
+  
+  <!-- vue-material - Material Design for Vue.js -->
+  <script src="https://unpkg.com/vue-material@0.7.4/dist/vue-material.js"></script>
+
+  <!-- PouchDB - in-browser database -->
+  <script src="https://cdn.jsdelivr.net/gh/pouchdb/pouchdb@6.3.4/dist/pouchdb.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/pouchdb/pouchdb@6.3.4/dist/pouchdb.find.min.js"></script>
+
+  <!-- our code -->
+  <script src="shoppinglist.js"></script>
+
+  </body>
+</html>
